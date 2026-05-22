@@ -1,0 +1,37 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  # MS2 - Cloud Cost Query Service (pendiente IP y puerto)
+  # - name: ms2-query-service
+  #   url: http://<IP_MS2>:<PUERTO>
+  #   routes:
+  #     - name: ms2-route
+  #       paths:
+  #         - /query
+
+  # MS3 - Report & Aggregation Service (pendiente IP y puerto)
+  # - name: ms3-report-service
+  #   url: http://<IP_MS3>:<PUERTO>
+  #   routes:
+  #     - name: ms3-route
+  #       paths:
+  #         - /report
+
+  # MS4 - Audit & Logging Service (pendiente IP y puerto)
+  # - name: ms4-audit-service
+  #   url: http://<IP_MS4>:<PUERTO>
+  #   routes:
+  #     - name: ms4-route
+  #       paths:
+  #         - /audit
+
+plugins:
+  - name: rate-limiting
+    config:
+      minute: 100
+      policy: local
+
+  - name: request-validator
+    config:
+      verbose_response: true
