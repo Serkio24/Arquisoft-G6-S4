@@ -32,6 +32,4 @@ plugins:
       minute: 100
       policy: local
 
-  - name: request-validator
-    config:
-      verbose_response: true
+  
