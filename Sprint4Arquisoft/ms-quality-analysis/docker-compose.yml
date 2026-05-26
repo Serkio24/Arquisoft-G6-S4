@@ -7,7 +7,7 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: sonar
-      POSTGRES_PASSWORD: sonar
+      POSTGRES_PASSWORD: sonar123
       POSTGRES_DB: sonarqube
     volumes:
       - sonar_db_data:/var/lib/postgresql/data
