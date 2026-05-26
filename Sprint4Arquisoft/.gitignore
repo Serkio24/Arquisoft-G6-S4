@@ -1,0 +1,23 @@
+# Entornos y secretos — NUNCA al repo
+.env
+*.env
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Docker
+.docker/
+
+# SonarQube scanner
+.scannerwork/
+
+# IDEs
+.idea/
+.vscode/
+*.swp

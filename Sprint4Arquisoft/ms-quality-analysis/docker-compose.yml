@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+
+  # ── Base de datos de SonarQube ──────────────────────────────────────────────
+  sonar-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonarqube
+    volumes:
+      - sonar_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonar"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── SonarQube ───────────────────────────────────────────────────────────────
+  sonarqube:
+    image: sonarqube:10-community
+    depends_on:
+      sonar-db:
+        condition: service_healthy
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonarqube
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+    ports:
+      - "9000:9000"           # UI de SonarQube — solo para desarrollo local
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_logs:/opt/sonarqube/logs
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  # ── FastAPI (quality-analysis-api) ──────────────────────────────────────────
+  quality-analysis-api:
+    build: .
+    ports:
+      - "8080:8080"           # Kong apunta a este puerto
+    environment:
+      SONAR_URL: http://sonarqube:9000
+      SONAR_TOKEN: ${SONAR_TOKEN}           # Definir en .env local
+      SONAR_PROJECT_KEY: bite-monorepo
+    depends_on:
+      - sonarqube
+    restart: unless-stopped
+
+volumes:
+  sonar_db_data:
+  sonar_data:
+  sonar_logs:

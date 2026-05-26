@@ -1,0 +1,97 @@
+version: 0.2
+
+# ────────────────────────────────────────────────────────────────────────────
+# Pipeline de calidad — ms-quality-analysis
+# Se ejecuta en cada push a la rama main.
+#
+# Qué hace este pipeline para cumplir el ASR:
+#   1. Instala el scanner de SonarQube
+#   2. Corre el análisis sobre el código del monorepo
+#   3. Espera el resultado del Quality Gate
+#   4. Si el Quality Gate falla (rating != A), el build falla → bloquea el merge
+#   5. Construye y despliega la imagen Docker en EC2
+# ────────────────────────────────────────────────────────────────────────────
+
+env:
+  variables:
+    SONAR_PROJECT_KEY: "SprintArq4"
+    SONAR_HOST_URL: "http://ms-quality-db:9000"   # SonarQube interno en EC2
+  secrets-manager:
+    SONAR_TOKEN: "bite/sonarqube/token"            # Token guardado en AWS Secrets Manager
+    ECR_REPO:    "bite/ecr/quality-repo-uri"
+
+phases:
+
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - echo "Instalando SonarScanner CLI..."
+      - apt-get update -qq && apt-get install -y -qq unzip curl
+      - curl -sSL https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip -o sonar-scanner.zip
+      - unzip -q sonar-scanner.zip
+      - export PATH="$PWD/sonar-scanner-5.0.1.3006-linux/bin:$PATH"
+      - echo "SonarScanner instalado"
+
+  pre_build:
+    commands:
+      - echo "Autenticando en ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO
+      - echo "Instalando dependencias Python para tests..."
+      - pip install -r ms-quality-analysis/requirements.txt -q
+      - pip install pytest pytest-asyncio httpx -q
+
+  build:
+    commands:
+      # ── 1. Tests unitarios ──────────────────────────────────────────────────
+      - echo "Corriendo tests..."
+      - cd ms-quality-analysis && pytest tests/ -v --tb=short && cd ..
+
+      # ── 2. Análisis SonarQube ───────────────────────────────────────────────
+      - echo "Ejecutando análisis SonarQube sobre rama main..."
+      - sonar-scanner
+          -Dsonar.projectKey=$SONAR_PROJECT_KEY
+          -Dsonar.sources=ms-quality-analysis/app
+          -Dsonar.tests=ms-quality-analysis/tests
+          -Dsonar.host.url=$SONAR_HOST_URL
+          -Dsonar.token=$SONAR_TOKEN
+          -Dsonar.qualitygate.wait=true
+          -Dsonar.qualitygate.timeout=300
+
+      # sonar.qualitygate.wait=true hace que el scanner espere el resultado
+      # y retorne exit code != 0 si el Quality Gate falla.
+      # Esto bloquea el pipeline si la calificación baja de A → cumple ASR.
+
+      # ── 3. Build de imagen Docker ───────────────────────────────────────────
+      - echo "Construyendo imagen Docker..."
+      - cd ms-quality-analysis
+      - docker build -t quality-analysis-api .
+      - docker tag quality-analysis-api:latest $ECR_REPO:latest
+      - docker tag quality-analysis-api:latest $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION
+
+  post_build:
+    commands:
+      - echo "Subiendo imagen a ECR..."
+      - docker push $ECR_REPO:latest
+      - docker push $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION
+
+      # ── 4. Despliegue en EC2 (SSH) ──────────────────────────────────────────
+      - echo "Desplegando en EC2 ms-quality-analysis..."
+      - aws ssm send-command
+          --instance-ids $EC2_INSTANCE_ID
+          --document-name "AWS-RunShellScript"
+          --parameters 'commands=[
+            "docker pull '$ECR_REPO':latest",
+            "docker stop quality-api || true",
+            "docker rm quality-api || true",
+            "docker run -d --name quality-api
+              -p 8080:8080
+              -e SONAR_URL=http://localhost:9000
+              -e SONAR_TOKEN=$(aws secretsmanager get-secret-value --secret-id bite/sonarqube/token --query SecretString --output text)
+              -e SONAR_PROJECT_KEY=bite-monorepo
+              '$ECR_REPO':latest"
+          ]'
+
+artifacts:
+  files:
+    - "**/*"
