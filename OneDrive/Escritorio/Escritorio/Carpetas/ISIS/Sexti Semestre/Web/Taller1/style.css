@@ -1,0 +1,44 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f8;
+    margin: 0;
+    padding: 2rem 1rem;
+}
+
+h1 {
+    margin-top: 0;
+    font-size: 2rem;
+}
+
+button {
+    background-color: #4c6580;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+button:hover {
+    background-color: #3b4c61;
+}
+
+ul {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.4rem;
+
+}
+
+
+#contador {
+    display: block;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: #777;
+}

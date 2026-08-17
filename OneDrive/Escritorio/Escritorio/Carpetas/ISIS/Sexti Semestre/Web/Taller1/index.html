@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taller 1, ToDo List</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+</head>
+
+<body>
+    <main>
+        <h1>Tareas por hacer</h1>
+        <form id="formato">
+            <input type="text" id="tarea" placeholder="Ingrese una tarea">
+            <select id="prioridad">
+                <option value="alta">Alta</option>
+                <option value="media">Media</option>
+                <option value="baja">Baja</option>
+            </select>
+            <button type="submit">Agregar</button>
+
+        </form>
+        <select id = "filtro">
+            <option value = "todas">Todas</option>
+            <option value = "pendientes">Pendientes</option>
+            <option value = "completadas">Completadas</option>
+        </select>
+        <button id = "borrar"> Borrar Completadas </button>
+
+        <ul id ="lista"></ul>
+        <p id ="contador"></p>
+    </main>
+</body>
+</html>
